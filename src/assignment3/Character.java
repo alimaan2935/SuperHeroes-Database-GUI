@@ -81,7 +81,7 @@ public class Character implements Serializable {
      * Sets the Character's image path.
      * @param path	The Character's image path as a String.
      */
-    public void getImagePath(String path) {
+    public void setImagePath(String path) {
     		imagePath = path;
     }
 

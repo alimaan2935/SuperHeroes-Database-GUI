@@ -77,7 +77,7 @@ public class SuperCharacter extends Character {
 	 * Add a power to the Super-Character's set of powers.
 	 * 
 
-	 * @param t The super-character's power to add.
+	 * @param p The super-character's power to add.
 	 */
 	public void addPower(String p) { 
 		powers.add(p); 
@@ -86,7 +86,7 @@ public class SuperCharacter extends Character {
 	/**
 	 * Remove a power from the Super-Character's set of powers.
 	 * 
-	 * @param t The super-character's power to remove.
+	 * @param p The super-character's power to remove.
 	 */
 	public void removePower(String p) { 
 		powers.remove(p); 
