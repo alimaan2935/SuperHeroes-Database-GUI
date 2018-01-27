@@ -189,6 +189,11 @@ public class Character implements Serializable {
 			return false;
 		}
 	}
+	
+	@Override
+	public int hashCode() {
+		return name.hashCode();
+	}
 
 	@Override
 	public Object clone() {

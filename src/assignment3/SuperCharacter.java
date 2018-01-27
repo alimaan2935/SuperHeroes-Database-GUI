@@ -69,7 +69,8 @@ public class SuperCharacter extends Character {
 	 * @throws IllegalPowerRankingException
 	 */
 	public SuperCharacter(String n, String d, String i, int p) throws IllegalPowerRankingException {
-		this(n, d, p);
+		super(n, d, i);
+		setPowerRanking(p);
 		powers = new HashSet<String>();
 	}
 

@@ -29,7 +29,7 @@ public class CharacterEditor extends Application{
 		fxmlLoader.setLocation(location);
 
 		Parent root = fxmlLoader.load(location.openStream());
-		Scene scene = new Scene(root, 400, 700);
+		Scene scene = new Scene(root, 1000, 700);
 
 		primaryStage.setTitle("CSSE2002 Assignment 3: Character Editor");
 		primaryStage.setScene(scene);

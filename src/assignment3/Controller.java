@@ -2,13 +2,16 @@ package assignment3;
 
 import java.io.File;
 import java.net.URL;
+import java.util.Comparator;
 import java.util.ResourceBundle;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.TextFieldListCell;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.stage.FileChooser;
@@ -16,7 +19,7 @@ import javafx.stage.Stage;
 
 /**
  * Controller class for the Character Editor.
- * @author leggy (Lachlan Healey)
+ * @author Ali Nawaz Maan
  */
 public class Controller implements Initializable{
 	
@@ -25,7 +28,7 @@ public class Controller implements Initializable{
 	private ObservableList<String> characterDisplayList;
 	private Character selectedCharacter;
 	private Image selectedImage;
-	private String selectedImagePath;
+	private boolean databaseLoaded = false;
 
 	@FXML
 	private Button loadDatabase;
@@ -67,6 +70,14 @@ public class Controller implements Initializable{
 	private Button saveCharacterChanges;
 	@FXML
 	private Label characterNameDisplay;
+	@FXML
+	private Button addTraitBtn;
+	@FXML
+	private Button removeTraitBtn;
+	@FXML
+	private Button addPowerBtn;
+	@FXML
+	private Button removePowerBtn;
 
 
 	/**
@@ -79,13 +90,12 @@ public class Controller implements Initializable{
 
 	/**
 	 * Initializer
-	 * @param location
-	 * @param resources
+	 * @param location location
+	 * @param resources resources
 	 */
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
-
-		// Handling button events
+		// Handling click events
 		loadDatabaseEvent();
 		createDatabaseEvent();
 		saveDatabaseEvent();
@@ -96,15 +106,13 @@ public class Controller implements Initializable{
 		clearSearchEvent();
 		deleteCharacterEvent();
 		changeImageEvent();
+		editTraitsEvent();
+		editPowersEvent();
 		saveCharacterChangesEvent();
-
-		// Setting list View Constraints
-		characterList.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
-		traitsList.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
-		powerList.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
-
-
-
+		addTraitEvent();
+		removeTraitEvent();
+		addPowerEvent();
+		removePowerEvent();
 	}
 
 	/**
@@ -115,6 +123,7 @@ public class Controller implements Initializable{
 			File file = fileChooser.showOpenDialog(new Stage());
 			if (file != null) {
 				displayDatabase(file.getPath());
+				databaseLoaded = true;
 			}
 		});
 	}
@@ -124,12 +133,22 @@ public class Controller implements Initializable{
 	 * @param filePath Path of the database file to load and display.
 	 */
 	private void displayDatabase(String filePath) {
-		model.loadDatabase(filePath);
+		try {
+			model.loadDatabase(filePath);
+		}catch (Exception e) {
+			showAlert(1, "Error loading database", "Error loading database", e.getMessage());
+			return;
+		}
+		characterDisplayList = FXCollections.observableArrayList();
+		characterDisplayList.addAll(model.getCharacters());
 
-		characterDisplayList.addAll(model.getCharacters().trim().split(System.lineSeparator()));
-		characterDisplayList.remove(0);
+		Comparator<String> comparator = new StringComparator();
+		characterDisplayList.sort(comparator);
+
 		characterList.setItems(characterDisplayList);
 
+		showAlert(2, "Database loaded", "Database Loaded", "Database has been loaded. " +
+				"Please save after making changes in characters.");
 	}
 
 	/**
@@ -137,10 +156,19 @@ public class Controller implements Initializable{
 	 */
 	private void createCharacterEvent() {
 		newCharacter.setOnAction(e -> {
-			if (!characterNameCreate.getText().isEmpty()) {
-				selectedCharacter = model.createCharacter(characterNameCreate.getText());
-				characterDisplayList.add(characterNameCreate.getText());
-				characterList.setItems(characterDisplayList);
+			if (databaseLoadCheck()) {
+				if (!characterNameCreate.getText().isEmpty()) {
+					if (characterDisplayList.contains(characterNameCreate.getText())) {
+						showAlert(1, "Character already created", "Character already created", "Please " +
+								"try to provide some other name for your character.");
+					}else {
+						selectedCharacter = model.createCharacter(characterNameCreate.getText());
+						characterDisplayList.add(selectedCharacter.getName());
+						characterList.setItems(characterDisplayList);
+						selectItem(selectedCharacter.getName());
+						characterNameCreate.setText("");
+					}
+				}
 			}
 		});
 	}
@@ -150,10 +178,19 @@ public class Controller implements Initializable{
 	 */
 	private void createSuperCharacterEvent() {
 		newSuperCharacter.setOnAction(e -> {
-			if (!characterNameCreate.getText().isEmpty()) {
-				selectedCharacter = model.createSuperCharacter(characterNameCreate.getText());
-				characterDisplayList.add(characterNameCreate.getText());
-				characterList.setItems(characterDisplayList);
+			if (databaseLoadCheck()) {
+				if (!characterNameCreate.getText().isEmpty()) {
+					if (characterDisplayList.contains(characterNameCreate.getText())) {
+						showAlert(1, "Character already created", "Character already created", "Please " +
+								"try to provide some other name for your character.");
+					}else {
+						selectedCharacter = model.createSuperCharacter(characterNameCreate.getText());
+						characterDisplayList.add(selectedCharacter.getName());
+						characterList.setItems(characterDisplayList);
+						selectItem(selectedCharacter.getName());
+						characterNameCreate.setText("");
+					}
+				}
 			}
 		});
 	}
@@ -164,7 +201,20 @@ public class Controller implements Initializable{
 	private void createDatabaseEvent() {
 		createDatabase.setOnAction(e -> {
 			if (!enterFilename.getText().isEmpty()) {
-				model.loadDatabase(enterFilename.getText());
+				try {
+					model.createDatabase(enterFilename.getText());
+				}catch (Exception exc) {
+					showAlert(1, "Error creating database", "Error creating database", exc.getMessage());
+				}
+
+				databaseLoaded = true;
+				characterDisplayList = FXCollections.observableArrayList();
+				characterList.setItems(characterDisplayList);
+				showAlert(2, "Database created", "Database created", "Your database has been created. " +
+						"Please add characters and super characters to edit their characteristics and save the database.");
+
+			}else {
+				showAlert(1,"Empty filename", "Empty filename", "Please enter filename of the database to be created");
 			}
 		});
 	}
@@ -173,7 +223,14 @@ public class Controller implements Initializable{
 	 * Saves the database
 	 */
 	private void saveDatabaseEvent() {
-		saveDatabase.setOnAction(e -> model.save());
+		saveDatabase.setOnAction(e -> {
+			if (databaseLoadCheck() && !characterDisplayList.isEmpty()) {
+				model.save();
+				showAlert(2, "Database saved", "Database saved", "Your changes to the database are saved.");
+			}else {
+				showAlert(1, "No characters to save", "No characters to save", "Please add characters to save.");
+			}
+		});
 	}
 
 	/**
@@ -181,35 +238,137 @@ public class Controller implements Initializable{
 	 */
 	private void selectCharacterEvent() {
 		characterList.setOnMouseClicked(e -> {
-			String selectedName = characterList.getSelectionModel().getSelectedItem().toString().trim();
-			Character c = model.search(selectedName);
-			setCharacterFields(c);
+			if (databaseLoadCheck()) {
+				if (!characterDisplayList.isEmpty()) {
+					String selectedName = characterList.getSelectionModel().getSelectedItem().toString();
+					Character c = model.search(selectedName);
+					selectedCharacter = c;
+					setCharacterFields(selectedCharacter);
+				}
+			}
 		});
 	}
 
 	/**
-	 * Handles image change event
+	 * Handles delete character event
 	 */
 	private void deleteCharacterEvent() {
 		deleteCharacter.setOnAction(e -> {
-			String name = characterList.getSelectionModel().getSelectedItem().toString();
-			model.delete(name);
-			characterDisplayList.remove(name);
-			characterList.setItems(characterDisplayList);
+			if (databaseLoadCheck()) {
+				String name = characterList.getSelectionModel().getSelectedItem().toString();
+				model.delete(name);
+				characterDisplayList.remove(name);
+				characterList.setItems(characterDisplayList);
+			}
 		});
 	}
 
 	/**
-	 * Handles image change event
+	 * Handles image change exvent
 	 */
 	private void changeImageEvent() {
 		changeImage.setOnAction(e -> {
-			File file = fileChooser.showOpenDialog(new Stage());
-			if (file != null) {
-				selectedCharacter.setImagePath(file.getPath());
-				selectedImage = new Image(file.getPath());
-				imageView.setImage(selectedImage);
+			if (databaseLoadCheck()) {
+				File file = fileChooser.showOpenDialog(new Stage());
+				if (file != null) {
+					String filePath = getImagePath(file);
+					selectedCharacter.setImagePath(filePath);
+					selectedImage = new Image(selectedCharacter.getImagePath());
+					imageView.setImage(selectedImage);
+				}
 			}
+		});
+	}
+
+	/**
+	 * Handles traits editing event
+	 */
+	private void editTraitsEvent() {
+		traitsList.setCellFactory(TextFieldListCell.forListView());
+		traitsList.setOnEditCommit(new EventHandler<ListView.EditEvent>() {
+			@Override
+			public void handle(ListView.EditEvent event) {
+				String editingTrait = traitsList.getItems().get(traitsList.getEditingIndex()).toString();
+				selectedCharacter.removeTrait(editingTrait);
+
+				int index = event.getIndex();
+				String newTrait = event.getNewValue().toString();
+				traitsList.getItems().set(index, newTrait);
+				traitsList.setItems(traitsList.getItems());
+				selectedCharacter.addTrait(newTrait);
+			}
+		});
+	}
+
+	/**
+	 * Handles adding a new trait event
+	 */
+	private void addTraitEvent() {
+		addTraitBtn.setOnAction(e -> {
+			traitsList.getItems().add("New Trait");
+			traitsList.setItems(traitsList.getItems());
+		});
+	}
+
+	/**
+	 * Handles removing a trait event
+	 */
+	private void removeTraitEvent() {
+		removeTraitBtn.setOnAction(e -> {
+			String removal = traitsList.getSelectionModel().getSelectedItem().toString();
+			traitsList.getItems().remove(removal);
+			traitsList.setItems(traitsList.getItems());
+			selectedCharacter.removeTrait(removal);
+
+		});
+	}
+
+	/**
+	 * Handles powers editing event
+	 */
+	private void editPowersEvent() {
+		powerList.setCellFactory(TextFieldListCell.forListView());
+		powerList.setOnEditCommit(new EventHandler<ListView.EditEvent>() {
+			@Override
+			public void handle(ListView.EditEvent event) {
+				String editingPower = powerList.getItems().get(powerList.getEditingIndex()).toString();
+				SuperCharacter s = (SuperCharacter) selectedCharacter;
+				s.removePower(editingPower);
+
+				int index = event.getIndex();
+				String newPower = event.getNewValue().toString();
+				powerList.getItems().set(index, newPower);
+				powerList.setItems(powerList.getItems());
+				s.addPower(newPower);
+
+				selectedCharacter = s;
+			}
+		});
+	}
+
+	/**
+	 * Handles adding a new power event
+	 */
+	private void addPowerEvent() {
+		addPowerBtn.setOnAction(e -> {
+			powerList.getItems().add("New Power");
+			powerList.setItems(powerList.getItems());
+		});
+	}
+
+	/**
+	 * Handles removing a power event
+	 */
+	private void removePowerEvent() {
+		removePowerBtn.setOnAction(e -> {
+			String removal = powerList.getSelectionModel().getSelectedItem().toString();
+			powerList.getItems().remove(removal);
+			powerList.setItems(powerList.getItems());
+
+			SuperCharacter s = (SuperCharacter) selectedCharacter;
+			s.removePower(removal);
+			selectedCharacter = s;
+
 		});
 	}
 
@@ -218,10 +377,51 @@ public class Controller implements Initializable{
 	 */
 	private void saveCharacterChangesEvent() {
 		saveCharacterChanges.setOnAction(e -> {
-			getCharacterFields(selectedCharacter);
+			if (databaseLoadCheck()) {
+				Character c = getCharacterFields(selectedCharacter);
+				model.addCharacter(c);
+
+				showAlert(2, "Changes saved", "Changes saved", "Character changes has been saved." +
+						" Please save the database for changes to take effect on the database file.");
+			}
 
 		});
 	}
+
+	/**
+	 * Handles search event
+	 */
+	private void searchCharacterEvent() {
+		search.setOnAction(e -> {
+			if (databaseLoadCheck()) {
+				String selectedName = enterCharacterNameSearch.getText();
+				selectedCharacter = model.search(selectedName);
+
+				if (selectedCharacter == null) {
+					showAlert(1, "Character not found", "Character not found", selectedName + " is not in the database");
+				} else {
+					ObservableList<String> searchResults = FXCollections.observableArrayList();
+					searchResults.add(selectedCharacter.getName());
+					characterList.setItems(searchResults);
+				}
+			}
+		});
+	}
+
+
+	/**
+	 * Handles clear search event
+	 */
+	private void clearSearchEvent() {
+		clearSearch.setOnAction(e -> {
+			if (databaseLoadCheck()) {
+				characterList.setItems(characterDisplayList);
+				enterCharacterNameSearch.setText("");
+			}
+		});
+	}
+
+
 
 	/**
 	 * Populate Character object with editor fields content
@@ -232,19 +432,19 @@ public class Controller implements Initializable{
 		c.setDescription(descriptionField.getText());
 		ObservableList<String> traits = traitsList.getItems();
 		for (String t : traits) {
-			selectedCharacter.addTrait(t);
+			c.addTrait(t);
 		}
 
 		if (c instanceof SuperCharacter) {
 			try {
-				((SuperCharacter) selectedCharacter).setPowerRanking(Integer.parseInt(powerLevelField.getText()));
+				((SuperCharacter) c).setPowerRanking(Integer.parseInt(powerLevelField.getText()));
 			} catch (IllegalPowerRankingException ex) {
 				ex.printStackTrace();
 			}
 
 			ObservableList<String> powers = powerList.getItems();
 			for (String p : powers) {
-				((SuperCharacter) selectedCharacter).addPower(p);
+				((SuperCharacter) c).addPower(p);
 			}
 		}
 
@@ -268,39 +468,91 @@ public class Controller implements Initializable{
 		traitsList.setItems(traits);
 
 		if (c instanceof SuperCharacter) {
+			powerLevelField.setDisable(false);
+			powerList.setDisable(false);
+
 			powerLevelField.setText(""+((SuperCharacter) c).getPowerRanking());
 			ObservableList<String> powers = FXCollections.observableArrayList();
 			for (String p : ((SuperCharacter) c).powers) {
 				powers.add(p);
 			}
 			powerList.setItems(powers);
+		}else {
+			powerLevelField.setText("");
+			powerLevelField.setDisable(true);
+
+			powerList.setItems(FXCollections.observableArrayList());
+			powerList.setDisable(true);
+
 		}
 	}
 
-	/**
-	 * Handles search event
-	 */
-	private void searchCharacterEvent() {
-		search.setOnAction(e -> {
-			selectedCharacter = model.search(enterCharacterNameSearch.getText());
 
-		});
+	/**
+	 * Selects, focusses and scrolls to a selected item from the characterlist listview.
+	 * @param item Item to be selected from the list view
+	 */
+	private void selectItem(String item) {
+		int i = characterDisplayList.indexOf(item);
+		characterList.scrollTo(i);
+		characterList.getFocusModel().focus(i);
+		characterList.getSelectionModel().select(i);
+
+		Character c = model.search(characterList.getSelectionModel().getSelectedItem().toString());
+		selectedCharacter = c;
+		setCharacterFields(selectedCharacter);
+	}
+
+	/**
+	 * Shows alert message
+	 * @param title title of the alert window
+	 * @param description header of the alert box
+	 * @param content content description of alert box
+	 */
+	private void showAlert(int type ,String title, String description, String content) {
+
+		Alert alert;
+
+		if (type == 1) {
+			alert = new Alert(Alert.AlertType.ERROR);
+		}else {
+			alert = new Alert(Alert.AlertType.INFORMATION);
+		}
+		alert.setTitle(title);
+		alert.setHeaderText(description);
+		alert.setContentText(content);
+		alert.show();
 	}
 
 
 	/**
-	 * Handles clear search event
+	 * Checks if database is loaded or not.
+	 * Shows alert to prompt user to load the database first.
+	 * @return true if database is loaded, false otherwise.
 	 */
-	private void clearSearchEvent() {
-		clearSearch.setOnAction(e -> {
-			characterList.setItems(characterDisplayList);
-		});
+	private boolean databaseLoadCheck() {
+		if (!databaseLoaded) {
+			showAlert(1, "Database not loaded", "Database not loaded", "Please load or create a database" +
+					" first to perform this action");
+			return false;
+		}
+		return true;
 	}
 
+	private String getImagePath(File file) {
+		String[] filePath = file.getPath().split("/");
+		return "images/" + filePath[filePath.length-1];
+	}
 
+	/**
+	 * String comparator class
+	 */
+	private class StringComparator implements Comparator<String> {
 
+		@Override
+		public int compare(String o1, String o2) {
 
-
-
-
+			return o1.compareTo(o2);
+		}
+	}
 }

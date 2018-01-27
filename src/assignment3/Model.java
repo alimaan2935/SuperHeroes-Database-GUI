@@ -1,10 +1,11 @@
 package assignment3;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * Model class for the Character Editor
- * @author leggy (Lachlan Healey)
+ * @author Ali Nawaz Maan
  */
 public class Model {
 
@@ -25,7 +26,7 @@ public class Model {
 	 * Load database based on user selected filepath.
 	 * @param path Path of database file to load
 	 */
-	public void loadDatabase(String path) {
+	public void loadDatabase(String path) throws Exception {
 		database = new CharacterDatabase(path);
 		try {
 			database.load();
@@ -43,7 +44,7 @@ public class Model {
 	public boolean createDatabase(String filename) {
 		database = new CharacterDatabase(filename);
 		try {
-			database.load();
+			database.save();
 			return true;
 		}catch (Exception e) {
 			e.printStackTrace();
@@ -55,8 +56,8 @@ public class Model {
 	 * Get characters from the loaded database.
 	 * @return String of characters in the loaded database
 	 */
-	public String getCharacters() {
-		return database.toString();
+	public List<String> getCharacters() {
+		return database.getCharacterNames();
 
 	}
 
@@ -79,7 +80,7 @@ public class Model {
 	 */
 	public SuperCharacter createSuperCharacter(String name) {
 		try {
-			SuperCharacter s = new SuperCharacter(name, " ", SuperCharacter.INVALID);
+			SuperCharacter s = new SuperCharacter(name, " ", SuperCharacter.UNRANKABLE);
 			addCharacter(s);
 			return s;
 		}catch (IllegalPowerRankingException e) {
@@ -95,7 +96,7 @@ public class Model {
 	 * @param c Character object to add
 	 */
 	public void addCharacter(Character c) {
-		database.remove(c);
+		delete(c.getName());
 		database.add(c);
 	}
 
