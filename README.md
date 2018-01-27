@@ -1,2 +1,2 @@
 # SuperHeroes-Database-GUI
-GUI to handle superhero database.
+GUI using JavaFX to handle superhero database.
